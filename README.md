@@ -1,4 +1,4 @@
-## Bilt Rewards Web Assessment
+## Legally-distinct word game
 
 ### Installation
 
@@ -7,11 +7,3 @@
 ### Run
 
 `npm start`
-
-### App
-
-- `http://localhost:3000`
-
-## Instructions
-
-Further instructions will be provided by one of our engineers during the interview
