@@ -3,34 +3,59 @@ import { Letter } from "./Letter";
 import styles from "./page.module.css";
 
 export type LetterState = {
-  char: string | null;
+  char: string;
   state: "correct" | "partial" | "incorrect" | "unused";
 };
 
 const WORDLENGTH = 5;
 const NUMROUNDS = 6;
 
-function compareLettersAt(
-  letter: string,
-  targetWord: string,
-  idx: number,
-): LetterState["state"] {
-  let res: LetterState["state"] = "incorrect";
-  if (letter === targetWord[idx]) {
-    res = "correct";
-  } else if (targetWord.includes(letter)) {
-    res = "partial";
-  }
+function compareLettersToTarget(letters: LetterState[], target: string) {
+  const targetLetterFreqs = Array.from(target).reduce(
+    (acc, curr) => {
+      acc[curr] = acc.hasOwnProperty(curr) ? acc[curr] + 1 : 1;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
 
-  return res;
+  return (
+    letters
+      // Find correct characters first
+      .map(({ char }, i): LetterState => {
+        let newState: LetterState["state"] = "unused";
+        if (char in targetLetterFreqs && char === target[i]) {
+          newState = "correct";
+          targetLetterFreqs[char]--;
+        }
+
+        return { char, state: newState };
+      })
+      // Only apply 'partial' state to letters whose frequency in the input, as of the current index,
+      // is less than or equal to the frequency of that character in the target word
+      // i.e. for target = 'mummy' and input = 'ummmm', return partial, partial, correct, correct, incorrect
+      .map(({ char, state }): LetterState => {
+        let newState: LetterState["state"] = state;
+        if (state != "correct") {
+          if (target.includes(char) && targetLetterFreqs[char] > 0) {
+            newState = "partial";
+            targetLetterFreqs[char]--;
+          } else {
+            newState = "incorrect";
+          }
+        }
+
+        return { char, state: newState };
+      })
+  );
 }
 
 function stringToLetters(str: string): LetterState[] {
   return Array.from(str).map((char) => ({ char, state: "unused" }));
 }
 
-function lettersToString(letters: LetterState[]): string {
-  return letters.reduce((acc, { char }) => acc + char, "");
+function lettersToString(letters: LetterState[]) {
+  return letters.reduce((acc, curr) => acc.concat(curr.char), "");
 }
 
 interface GameProps {
@@ -39,7 +64,7 @@ interface GameProps {
 }
 
 export function Game({ targetWord, resetCallback }: GameProps) {
-  const emptyLetter: LetterState = { char: null, state: "unused" };
+  const emptyLetter: LetterState = { char: "", state: "unused" };
   const blankGame = new Array(NUMROUNDS).fill(
     new Array<LetterState>(WORDLENGTH).fill(emptyLetter),
   );
@@ -47,9 +72,7 @@ export function Game({ targetWord, resetCallback }: GameProps) {
   const [currentRound, setCurrentRound] = useState(0);
   const [attempts, setAttempts] = useState<LetterState[][]>(blankGame);
   const hasWon =
-    currentRound &&
-    lettersToString(attempts[currentRound - 1]).toLowerCase() ===
-      targetWord.toLowerCase();
+    currentRound && lettersToString(attempts[currentRound - 1]) === targetWord;
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setAttempts((prev) => {
@@ -69,14 +92,10 @@ export function Game({ targetWord, resetCallback }: GameProps) {
 
       setAttempts((prev) => {
         const copy = window.structuredClone(prev);
-        copy[currentRound] = copy[currentRound].map(({ char }, i) => ({
-          char,
-          state: compareLettersAt(
-            char!.toLowerCase(),
-            targetWord.toLowerCase(),
-            i,
-          ),
-        }));
+        copy[currentRound] = compareLettersToTarget(
+          copy[currentRound],
+          targetWord,
+        );
         return copy;
       });
 

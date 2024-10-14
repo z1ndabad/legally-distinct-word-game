@@ -18,6 +18,8 @@ export default function Page() {
     setWord(getRandomWord());
   };
 
+  console.log(`The answer is: ${word}`);
+
   return (
     <div className={styles.page}>
       <h1>Legally-Distinct Word Game</h1>
